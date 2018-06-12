@@ -3,7 +3,7 @@ package com.parlam.okapicli.configuration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
-import com.parlam.okapicli.services.ExtractionService;
+import com.parlam.okapicli.services.OkapiService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -11,8 +11,8 @@ import org.springframework.context.annotation.Configuration;
 public class OkapiCliConfiguration {
 
 	@Bean
-	ExtractionService extractionService() {
-		return new ExtractionService();
+	OkapiService extractionService() {
+		return new OkapiService();
 	}
 
 	@Bean

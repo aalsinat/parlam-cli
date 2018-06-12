@@ -1,6 +1,6 @@
 package com.parlam.okapicli;
 
-import com.parlam.okapicli.services.ExtractionService;
+import com.parlam.okapicli.services.OkapiService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +25,7 @@ public class OkapiCliApplication implements ApplicationRunner {
 	private List<String> tikalParameters = new ArrayList<>();
 
 	@Autowired
-	private ExtractionService extractionService;
+	private OkapiService okapiService;
 
 	public static void main(String[] args) {
 		SpringApplication.run(OkapiCliApplication.class, args);
@@ -44,9 +44,12 @@ public class OkapiCliApplication implements ApplicationRunner {
 			case CMD_EXTRACT:
 				tikalParameters.add("-x");
 				tikalParameters.addAll(getExtractionArguments(args));
+				okapiService.extract(tikalParameters);
 				break;
 			case CMD_MERGE:
 				tikalParameters.add("-m");
+				tikalParameters.addAll(getMergingArguments(args));
+				okapiService.merge(tikalParameters);
 				break;
 			case CMD_SEGMENTATION:
 				tikalParameters.add("-s");
@@ -54,9 +57,9 @@ public class OkapiCliApplication implements ApplicationRunner {
 			case CMD_WORDCOUNT:
 				tikalParameters.add("-wc");
 				tikalParameters.addAll(getExtractionArguments(args));
+				okapiService.wordCount(tikalParameters);
 				break;
 		}
-		extractionService.extract(tikalParameters);
 	}
 
 	/**
@@ -69,16 +72,38 @@ public class OkapiCliApplication implements ApplicationRunner {
 		if (args.containsOption("sourceFile"))
 			extractionArgs.add(getOptionValue("sourceFile", args));
 		if (args.containsOption("targetFile"))
-			extractionArgs.addAll(Arrays.asList("-of", getOptionValue("targetFile", args)));
+			extractionArgs.addAll(Arrays.asList("-tf", getOptionValue("targetFile", args)));
 		if (args.containsOption("sourceLanguage"))
 			extractionArgs.addAll(Arrays.asList("-sl", getOptionValue("sourceLanguage", args)));
 		if (args.containsOption("targetLanguage"))
 			extractionArgs.addAll(Arrays.asList("-tl", getOptionValue("targetLanguage", args)));
 		if (args.containsOption("segmentation"))
 			extractionArgs.addAll(Arrays.asList("-seg", getOptionValue("segmentation", args)));
+		if (args.containsOption("noCopy"))
+			extractionArgs.addAll(Arrays.asList("-nocopy"));
 		return extractionArgs;
 	}
 
+	/**
+	 * Gets expected arguments for merging operation.
+	 *
+	 * @param args
+	 * @return
+	 */
+	private List<String> getMergingArguments(ApplicationArguments args) {
+		List<String> mergingArgs = new ArrayList<>();
+		if (args.containsOption("xliffFile"))
+			mergingArgs.add(getOptionValue("xliffFile", args));
+		if (args.containsOption("originalFile"))
+			mergingArgs.addAll(Arrays.asList("-of", getOptionValue("originalFile", args)));
+		if (args.containsOption("targetFile"))
+			mergingArgs.addAll(Arrays.asList("-tf", getOptionValue("targetFile", args)));
+		if (args.containsOption("sourceLanguage"))
+			mergingArgs.addAll(Arrays.asList("-sl", getOptionValue("sourceLanguage", args)));
+		if (args.containsOption("targetLanguage"))
+			mergingArgs.addAll(Arrays.asList("-tl", getOptionValue("targetLanguage", args)));
+		return mergingArgs;
+	}
 	/**
 	 * Method used to get option value when only interested in the first one.
 	 *

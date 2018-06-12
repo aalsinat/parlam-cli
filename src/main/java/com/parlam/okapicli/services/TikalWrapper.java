@@ -94,6 +94,7 @@ public class TikalWrapper {
 	private static ILogHandler logHandler;
 	private ArrayList<String> inputs;
 	private String skeleton;
+	private String originalFile;
 	private String output;
 	private String specifiedConfigId;
 	private String specifiedConfigIdPath;
@@ -152,7 +153,7 @@ public class TikalWrapper {
 	private String mosesToPathParam;
 	private String skeletonDir;
 	private String outputDir;
-	private String outputFilename;
+	private String targetFilename;
 	private String rootDir = System.getProperty("user.dir");
 	private ExecutionContext context;
 	private boolean newSkel = false;
@@ -195,7 +196,7 @@ public class TikalWrapper {
 		return uc.getProperty("displayEncoding", enc);
 	}
 
-	public static void process(String[] originalArgs) {
+	public static String process(String[] originalArgs) {
 		StringBuilder sb = new StringBuilder();
 		for (String st : originalArgs) {
 			sb.append(st);
@@ -235,19 +236,19 @@ public class TikalWrapper {
 			//prog.printBanner();
 			if (args.size() == 0) {
 				prog.printUsage();
-				return;
+				return null;
 			}
 			if (args.contains("-?")) {
 				prog.printUsage();
-				return; // Overrides all arguments
+				return null; // Overrides all arguments
 			}
 			if (args.contains("-h") || args.contains("--help") || args.contains("-help")) {
 				prog.showHelp();
-				return; // Overrides all arguments
+				return null; // Overrides all arguments
 			}
 			if (args.contains("-i") || args.contains("--info") || args.contains("-info")) {
 				prog.showInfo();
-				return; // Overrides all arguments
+				return null; // Overrides all arguments
 			}
 
 			// Set the default resource for the default engine.
@@ -267,8 +268,10 @@ public class TikalWrapper {
 					prog.outputEncoding = prog.getArgument(args, ++i);
 				} else if (arg.equals("-od")) {
 					prog.outputDir = prog.getArgument(args, ++i);
+				} else if (arg.equals("-tf")) {
+					prog.targetFilename = prog.getArgument(args, ++i);
 				} else if (arg.equals("-of")) {
-					prog.outputFilename = prog.getArgument(args, ++i);
+					prog.originalFile = prog.getArgument(args, ++i);
 				} else if (arg.equals("-sd")) {
 					prog.skeletonDir = prog.getArgument(args, ++i);
 				} else if (arg.equals("-rd")) {
@@ -545,7 +548,7 @@ public class TikalWrapper {
 			if (prog.command == -1) {
 				logger.warn("No command specified. Please use one of the command described below:");
 				prog.printUsage();
-				return;
+				return null;
 			}
 			if (prog.command == CMD_EDITCONFIG) {
 				if (prog.specifiedConfigId == null) {
@@ -553,23 +556,23 @@ public class TikalWrapper {
 				} else {
 					prog.editConfiguration();
 				}
-				return;
+				return null;
 			}
 			if (prog.command == CMD_SHOWCONFIGS) {
 				prog.showAllConfigurations();
-				return;
+				return null;
 			}
 			if (prog.command == CMD_QUERYTRANS) {
 				prog.processQuery();
-				return;
+				return null;
 			}
 			if (prog.command == CMD_WORDCOUNT) {
 				final String wordCount = prog.printWordCount();
-				return;
+				return wordCount;
 			}
 			if (prog.command == CMD_REPORT) {
 				prog.printScopingReport();
-				return;
+				return null;
 			}
 			if (prog.inputs.size() == 0) {
 				throw new OkapiException("No input document specified.");
@@ -601,6 +604,7 @@ public class TikalWrapper {
 			displayError(e, showTrace, prog.showTraceHint);
 			System.exit(1); // Error
 		}
+		return null;
 	}
 
 	private static void displayDivider() {
@@ -915,14 +919,19 @@ public class TikalWrapper {
 			throw new OkapiException(String.format(
 					"The input file '%s' does not have the expected .xlf extension.", input));
 		}
-
-		int n = input.lastIndexOf('.');
-		skeleton = input.substring(0, n);
+		if (originalFile == null) {
+			int n = input.lastIndexOf('.');
+			skeleton = input.substring(0, n);
+		} else {
+			skeleton = originalFile;
+		}
 
 		if (outputDir == null) {
-			output = pathInsertOutBeforeExt(skeleton);
+			output = targetFilename == null ? pathInsertOutBeforeExt(skeleton) : targetFilename;
 		} else {
-			output = pathChangeFolder(outputDir, skeleton);
+			output = targetFilename == null ?
+			         pathChangeFolder(outputDir, skeleton) :
+			         pathChangeFolder(outputDir, targetFilename);
 		}
 
 		if (newSkel) skeleton += ".skl";
@@ -1706,7 +1715,7 @@ public class TikalWrapper {
 		}
 		tmp += ".xlf";
 
-		tmp = pathChangeFilename(outputFilename, tmp);
+		tmp = pathChangeFilename(targetFilename, tmp);
 
 		tmp = pathChangeFolder(outputDir, tmp);
 		driver.addBatchItem(rd, new File(tmp).toURI(), outputEncoding);
@@ -2021,7 +2030,7 @@ public class TikalWrapper {
 		RawDocumentToFilterEventsStep rd2feStep = new RawDocumentToFilterEventsStep();
 		driver.addStep(rd2feStep);
 
-		String template = "[" + ScopingReportStep.PROJECT_TOTAL_WORD_COUNT + "]\n";
+		String template = "[" + ScopingReportStep.PROJECT_TOTAL_WORD_COUNT + "]";
 
 		WordCountStep wcStep = new WordCountStep();
 		driver.addStep(wcStep);
