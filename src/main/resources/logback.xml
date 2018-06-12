@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- turn OFF all logging (children can override) -->
+    <root level="OFF">
+        <appender-ref ref="STDOUT" />
+    </root>
+</configuration>

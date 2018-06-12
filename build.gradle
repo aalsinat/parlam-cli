@@ -1,0 +1,36 @@
+buildscript {
+    ext {
+        springBootVersion = '2.0.2.RELEASE'
+    }
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+
+group = 'com.parlam'
+version = '1.0.0'
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+    maven {
+        url 'http://repository-okapi.forge.cloudbees.com/release/'      // okapi fw
+    }
+}
+
+dependencies {
+    compile('org.springframework.boot:spring-boot-starter') {
+        exclude group: "ch.qos.logback", module: "logback-classic"
+        exclude group: "org.slf4j", module: "jul-to-slf4j"
+    }
+    compile (group: 'net.sf.okapi', name: 'okapi-application-tikal', version: "${okapi_core_version}")
+    testCompile('org.springframework.boot:spring-boot-starter-test')
+}
