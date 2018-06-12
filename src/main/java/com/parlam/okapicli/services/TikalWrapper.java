@@ -84,6 +84,7 @@ public class TikalWrapper {
 	private final static int CMD_SHOWCONFIGS = 12;
 	// private final static int CMD_ADDTRANS = 13; // No longer supported
 	private final static int CMD_REPORT = 14;
+	private final static int CMD_WORDCOUNT = 15;
 	private static final Logger logger = LoggerFactory.getLogger(TikalWrapper.class);
 	private static final String DEFAULT_SEGRULES = "-";
 	private static final String MSG_ONLYWITHUICOMP = "UI-based commands are available only in the distributions with UI components.";
@@ -515,6 +516,8 @@ public class TikalWrapper {
 					prog.context.setIsNoPrompt(false);
 				} else if (arg.equals("-sr")) {
 					prog.command = CMD_REPORT;
+				} else if (arg.equals("-wc")) {
+					prog.command = CMD_WORDCOUNT;
 				}
 				//=== Input file or error
 				else if (!arg.startsWith("-")) {
@@ -558,6 +561,10 @@ public class TikalWrapper {
 			}
 			if (prog.command == CMD_QUERYTRANS) {
 				prog.processQuery();
+				return;
+			}
+			if (prog.command == CMD_WORDCOUNT) {
+				final String wordCount = prog.printWordCount();
 				return;
 			}
 			if (prog.command == CMD_REPORT) {
@@ -1994,6 +2001,45 @@ public class TikalWrapper {
 		return null;
 	}
 
+	private String printWordCount() {
+		initialize();
+
+		// Create the driver
+		PipelineDriver driver = new PipelineDriver();
+		driver.setFilterConfigurationMapper(fcMapper);
+
+		for (String input : inputs) {
+			guessMissingParameters(input);
+			guessMissingLocales(input);
+
+			driver.addBatchItem(new RawDocument(Util.toURI(input), StandardCharsets.UTF_8.name(), srcLoc, trgLoc, configId),
+			                    null,
+			                    null);
+		}
+
+		// Raw document to filter events step
+		RawDocumentToFilterEventsStep rd2feStep = new RawDocumentToFilterEventsStep();
+		driver.addStep(rd2feStep);
+
+		String template = "[" + ScopingReportStep.PROJECT_TOTAL_WORD_COUNT + "]\n";
+
+		WordCountStep wcStep = new WordCountStep();
+		driver.addStep(wcStep);
+
+		ScopingReportStep srStep = new ScopingReportStep();
+		net.sf.okapi.steps.scopingreport.Parameters params = new net.sf.okapi.steps.scopingreport.Parameters();
+		params.setCustomTemplateString(template);
+		params.setOutputPath(null);
+		srStep.setParameters(params);
+		driver.addStep(srStep);
+
+		driver.processBatch();
+		driver.destroy();
+		return srStep.getReportGenerator()
+		             .generate();
+	}
+
+
 	private void printScopingReport() {
 		initialize();
 
@@ -2053,7 +2099,6 @@ public class TikalWrapper {
 
 		driver.processBatch();
 		driver.destroy();
-
 		logger.info(srStep.getReportGenerator()
 		                  .generate());
 	}

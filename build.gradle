@@ -27,10 +27,12 @@ repositories {
 }
 
 dependencies {
-    compile('org.springframework.boot:spring-boot-starter') {
+    compile('org.springframework.boot:spring-boot-starter')
+    compile (group: 'net.sf.okapi', name: 'okapi-application-tikal', version: "${okapi_core_version}") {
         exclude group: "ch.qos.logback", module: "logback-classic"
-        exclude group: "org.slf4j", module: "jul-to-slf4j"
+        exclude group: "org.slf4j", module: "slf4j-simple"
+        exclude group: "org.slf4j", module: "slf4j-api"
     }
-    compile (group: 'net.sf.okapi', name: 'okapi-application-tikal', version: "${okapi_core_version}")
+    compile('com.fasterxml.jackson.dataformat:jackson-dataformat-xml')
     testCompile('org.springframework.boot:spring-boot-starter-test')
 }

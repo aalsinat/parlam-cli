@@ -19,6 +19,7 @@ public class OkapiCliApplication implements ApplicationRunner {
 	private static final String CMD_EXTRACT = "extract";
 	private static final String CMD_MERGE = "merge";
 	private static final String CMD_SEGMENTATION = "segment";
+	private static final String CMD_WORDCOUNT = "wordcount";
 	private static final String CMD_NONE = "none";
 
 	private List<String> tikalParameters = new ArrayList<>();
@@ -37,7 +38,6 @@ public class OkapiCliApplication implements ApplicationRunner {
 		- extract
 		- merge
 	 */
-
 		List<String> actions = args.getOptionValues("operation");
 		String action = (actions != null) && (actions.size() > 0) ? actions.get(0) : "";
 		switch (action) {
@@ -51,6 +51,10 @@ public class OkapiCliApplication implements ApplicationRunner {
 			case CMD_SEGMENTATION:
 				tikalParameters.add("-s");
 				break;
+			case CMD_WORDCOUNT:
+				tikalParameters.add("-wc");
+				tikalParameters.addAll(getExtractionArguments(args));
+				break;
 		}
 		extractionService.extract(tikalParameters);
 	}
@@ -62,10 +66,10 @@ public class OkapiCliApplication implements ApplicationRunner {
 	 */
 	private List<String> getExtractionArguments(ApplicationArguments args) {
 		List<String> extractionArgs = new ArrayList<>();
-		if (args.containsOption("inputFile"))
-			extractionArgs.add(getOptionValue("inputFile", args));
-		if (args.containsOption("outputFile"))
-			extractionArgs.addAll(Arrays.asList("-of", getOptionValue("outputFile", args)));
+		if (args.containsOption("sourceFile"))
+			extractionArgs.add(getOptionValue("sourceFile", args));
+		if (args.containsOption("targetFile"))
+			extractionArgs.addAll(Arrays.asList("-of", getOptionValue("targetFile", args)));
 		if (args.containsOption("sourceLanguage"))
 			extractionArgs.addAll(Arrays.asList("-sl", getOptionValue("sourceLanguage", args)));
 		if (args.containsOption("targetLanguage"))
