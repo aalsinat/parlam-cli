@@ -1,5 +1,6 @@
 package com.parlam.okapicli.services;
 
+import com.parlam.okapicli.CliArgumentException;
 import net.sf.okapi.applications.tikal.logger.ILogHandler;
 import net.sf.okapi.applications.tikal.logger.LogHandlerFactory;
 import net.sf.okapi.common.*;
@@ -52,10 +53,7 @@ import net.sf.okapi.steps.wordcount.WordCountStep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintStream;
+import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -196,7 +194,8 @@ public class TikalWrapper {
 		return uc.getProperty("displayEncoding", enc);
 	}
 
-	public static String process(String[] originalArgs) {
+	public static String process(
+			String[] originalArgs) throws UnsupportedEncodingException, MalformedURLException, CliArgumentException, URISyntaxException {
 		StringBuilder sb = new StringBuilder();
 		for (String st : originalArgs) {
 			sb.append(st);
@@ -575,7 +574,7 @@ public class TikalWrapper {
 				return null;
 			}
 			if (prog.inputs.size() == 0) {
-				throw new OkapiException("No input document specified.");
+				throw new CliArgumentException("No input document specified.", "ERR02");
 			}
 
 			// Process all input files
@@ -588,7 +587,8 @@ public class TikalWrapper {
 				try {
 					prog.process(prog.inputs.get(i), args);
 				} catch (Throwable e) {
-					displayError(e, showTrace, prog.showTraceHint);
+					//displayError(e, showTrace, prog.showTraceHint);
+					manageLegacyExceptions(e);
 					if (prog.abortOnFailure) {
 						System.exit(1);
 					} else {
@@ -601,10 +601,35 @@ public class TikalWrapper {
 				displaySummary(prog.inputs.size(), errorCount, timer);
 			}
 		} catch (Throwable e) {
-			displayError(e, showTrace, prog.showTraceHint);
-			System.exit(1); // Error
+			//displayError(e, showTrace, prog.showTraceHint);
+			//System.exit(1); // Error
+			manageLegacyExceptions(e);
 		}
 		return null;
+	}
+
+	private static void manageLegacyExceptions(Throwable e) throws CliArgumentException {
+		if (e.getClass()
+		     .getName()
+		     .equals("net.sf.okapi.common.exceptions.OkapiException")) {
+			throw new CliArgumentException(e.getLocalizedMessage(), "ERR10");
+		}
+		if (e.getClass()
+		     .getName()
+		     .equals("net.sf.okapi.common.exceptions.OkapiIOException")) {
+			throw new CliArgumentException(e.getLocalizedMessage(), "ERR11");
+		}
+		if (e.getClass()
+		     .getName()
+		     .equals("net.sf.okapi.common.exceptions.OkapiFileNotFoundException")) {
+			throw new CliArgumentException(e.getLocalizedMessage(), "ERR12");
+		}
+		if (e.getClass()
+		     .getName()
+		     .equals("net.sf.okapi.common.exceptions.OkapiMergeException")) {
+			throw new CliArgumentException(e.getLocalizedMessage(), "ERR13");
+		}
+		if (e instanceof CliArgumentException) throw ((CliArgumentException) e);
 	}
 
 	private static void displayDivider() {
@@ -633,8 +658,8 @@ public class TikalWrapper {
 	                             int index) {
 		if (index >= args.size()) {
 			showTraceHint = false; // Using trace is not helpful to the user for this error
-			throw new OkapiException(String.format(
-					"Missing parameter after '%s'", args.get(index - 1)));
+			throw new CliArgumentException(String.format(
+					"Missing parameter after '%s'", args.get(index - 1)), "ERR05");
 		}
 		return args.get(index);
 	}
@@ -721,8 +746,8 @@ public class TikalWrapper {
 		// Get the configuration for the extension
 		String id = extensionsMap.get(ext);
 		if (id == null) {
-			throw new OkapiException(String.format(
-					"Could not guess the configuration for the extension '%s'", ext));
+			throw new CliArgumentException(String.format(
+					"Could not guess the configuration for the extension '%s'", ext), "ERR06");
 		}
 		return id;
 	}
@@ -781,12 +806,12 @@ public class TikalWrapper {
 		// Add the custom configurations
 		fcMapper.updateCustomConfigurations();
 
-		logger.info("List of all filter configurations available:");
+		logger.warn("List of all filter configurations available:");
 		Iterator<FilterConfiguration> iter = fcMapper.getAllConfigurations();
 		FilterConfiguration config;
 		while (iter.hasNext()) {
 			config = iter.next();
-			logger.info(" - {} = {}", config.configId, config.description);
+			logger.warn(" - {} = {}", config.configId, config.description);
 		}
 	}
 
@@ -827,16 +852,20 @@ public class TikalWrapper {
 
 		// Try to see if we can get one or both from the input file
 		if (inputPath != null) {
-			List<String> guessed = FileUtil.guessLanguages(inputPath);
-			if (guessed.size() > 0) {
-				if (srcLoc == null) {
-					srcLoc = LocaleId.fromString(guessed.get(0));
-				}
-				if (guessed.size() > 1) {
-					if (trgLoc == null) {
-						trgLoc = LocaleId.fromString(guessed.get(1));
+			try {
+				List<String> guessed = FileUtil.guessLanguages(inputPath);
+				if (guessed.size() > 0) {
+					if (srcLoc == null) {
+						srcLoc = LocaleId.fromString(guessed.get(0));
+					}
+					if (guessed.size() > 1) {
+						if (trgLoc == null) {
+							trgLoc = LocaleId.fromString(guessed.get(1));
+						}
 					}
 				}
+			} catch (OkapiException e) {
+				throw new CliArgumentException(e.getLocalizedMessage(), "ERR09");
 			}
 		}
 
@@ -857,8 +886,8 @@ public class TikalWrapper {
 		if (specifiedConfigId == null) {
 			String ext = Util.getExtension(inputOfConfig);
 			if (Util.isEmpty(ext)) {
-				throw new OkapiException(String.format(
-						"The input file '%s' has no extension to guess the filter from.", inputOfConfig));
+				throw new CliArgumentException(String.format(
+						"The input file '%s' has no extension to guess the filter from.", inputOfConfig), "ERR04");
 			}
 			configId = getConfigurationId(ext.toLowerCase());
 		} else {
@@ -916,8 +945,8 @@ public class TikalWrapper {
 	private void guessMergingArguments(String input) {
 		String ext = Util.getExtension(input);
 		if (!ext.equals(".xlf")) {
-			throw new OkapiException(String.format(
-					"The input file '%s' does not have the expected .xlf extension.", input));
+			throw new CliArgumentException(String.format(
+					"The input file '%s' does not have the expected .xlf extension.", input), "ERR07");
 		}
 		if (originalFile == null) {
 			int n = input.lastIndexOf('.');

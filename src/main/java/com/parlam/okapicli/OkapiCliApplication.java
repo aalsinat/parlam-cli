@@ -20,7 +20,15 @@ public class OkapiCliApplication implements ApplicationRunner {
 	private static final String CMD_MERGE = "merge";
 	private static final String CMD_SEGMENTATION = "segment";
 	private static final String CMD_WORDCOUNT = "wordcount";
-	private static final String CMD_NONE = "none";
+	private static final String CMD_LIST_FILTERS = "listfilters";
+	private static final String CMD_HELP = "help";
+
+	private static final String CMD_TIKAL_EXTRACT = "-x";
+	private static final String CMD_TKL_MERGE = "-m";
+	private static final String CMD_TKL_SEGMENTATION = "-s";
+	private static final String CMD_TKL_WORDCOUNT = "-wc";
+	private static final String CMD_TKL_LIST_FILTERS = "-lfc";
+
 
 	private List<String> tikalParameters = new ArrayList<>();
 
@@ -33,32 +41,45 @@ public class OkapiCliApplication implements ApplicationRunner {
 
 	@Override
 	public void run(ApplicationArguments args) {
-	/*
-		Action parameter. Allowed values:
-		- extract
-		- merge
-	 */
+		if (args.containsOption("help")) {
+			printUsage();
+			System.exit(1);
+		}
+
 		List<String> actions = args.getOptionValues("operation");
+		if ((actions == null) || (actions.size() == 0)) {
+			okapiService.displayError("ERR01", "Operation is not provided.");
+			System.exit(1);
+		}
+
 		String action = (actions != null) && (actions.size() > 0) ? actions.get(0) : "";
 		switch (action) {
 			case CMD_EXTRACT:
-				tikalParameters.add("-x");
+				tikalParameters.add(CMD_TIKAL_EXTRACT);
 				tikalParameters.addAll(getExtractionArguments(args));
 				okapiService.extract(tikalParameters);
 				break;
 			case CMD_MERGE:
-				tikalParameters.add("-m");
+				tikalParameters.add(CMD_TKL_MERGE);
 				tikalParameters.addAll(getMergingArguments(args));
 				okapiService.merge(tikalParameters);
 				break;
 			case CMD_SEGMENTATION:
-				tikalParameters.add("-s");
+				tikalParameters.add(CMD_TKL_SEGMENTATION);
 				break;
 			case CMD_WORDCOUNT:
-				tikalParameters.add("-wc");
+				tikalParameters.add(CMD_TKL_WORDCOUNT);
 				tikalParameters.addAll(getExtractionArguments(args));
 				okapiService.wordCount(tikalParameters);
 				break;
+			case CMD_LIST_FILTERS:
+				tikalParameters.add(CMD_TKL_LIST_FILTERS);
+				tikalParameters.addAll(getExtractionArguments(args));
+				okapiService.show(tikalParameters);
+				break;
+			default:
+				okapiService.displayError("ERR08", "Unknown operation.");
+				System.exit(1);
 		}
 	}
 
@@ -69,8 +90,7 @@ public class OkapiCliApplication implements ApplicationRunner {
 	 */
 	private List<String> getExtractionArguments(ApplicationArguments args) {
 		List<String> extractionArgs = new ArrayList<>();
-		if (args.containsOption("sourceFile"))
-			extractionArgs.add(getOptionValue("sourceFile", args));
+		manageSourceFileOption(args, extractionArgs);
 		if (args.containsOption("targetFile"))
 			extractionArgs.addAll(Arrays.asList("-tf", getOptionValue("targetFile", args)));
 		if (args.containsOption("sourceLanguage"))
@@ -82,6 +102,17 @@ public class OkapiCliApplication implements ApplicationRunner {
 		if (args.containsOption("noCopy"))
 			extractionArgs.addAll(Arrays.asList("-nocopy"));
 		return extractionArgs;
+	}
+
+	private void manageSourceFileOption(ApplicationArguments args, List<String> extractionArgs) {
+		if (args.containsOption("sourceFile")) {
+			if (getOptionValue("sourceFile", args) != null) {
+				extractionArgs.add(getOptionValue("sourceFile", args));
+			} else {
+				okapiService.displayError("ERR03", "sourceFile option must be followed by a file name.");
+				System.exit(1);
+			}
+		}
 	}
 
 	/**
@@ -104,6 +135,7 @@ public class OkapiCliApplication implements ApplicationRunner {
 			mergingArgs.addAll(Arrays.asList("-tl", getOptionValue("targetLanguage", args)));
 		return mergingArgs;
 	}
+
 	/**
 	 * Method used to get option value when only interested in the first one.
 	 *
@@ -112,7 +144,38 @@ public class OkapiCliApplication implements ApplicationRunner {
 	 * @return first value of specified option
 	 */
 	private String getOptionValue(String name, ApplicationArguments args) {
-		return args.getOptionValues(name)
-		           .get(0);
+		if (args.getOptionValues(name)
+		        .size() > 0) {
+			return args.getOptionValues(name)
+			           .get(0);
+		} else {
+			return null;
+		}
+	}
+
+	private void printUsage() {
+		logger.warn("---------------------------------------------------------------------------------------------------");
+		logger.warn("");
+		logger.warn("Shows this screen: --help");
+		logger.warn("");
+		//logger.warn("---------------------------------------------------------------------------------------------------");
+		logger.warn("Extracts a file to XLIFF (and optionally segment):");
+		logger.warn("   --operation=extract --sourceFile=inputFile  [--targetFile=outputFile] [--sourceLanguage=srcLang]");
+		logger.warn("      [--targetLanguage=trgLang] [--segmentation=srxFile] [--noCopy] ");
+		logger.warn("");
+		//logger.warn("---------------------------------------------------------------------------------------------------");
+		logger.warn("Merges an XLIFF document back to its original format:");
+		logger.warn("   --operation=merge --xliffFile=xliffFileName [--originalFile=originalFileName] ");
+		logger.warn("      [--targetFile=targetFileName]");
+		logger.warn("");
+		//logger.warn("---------------------------------------------------------------------------------------------------");
+		logger.warn("Counts word of a file:");
+		logger.warn("   --operation=wordcount --sourceFile=inputFile");
+		logger.warn("");
+		//logger.warn("---------------------------------------------------------------------------------------------------");
+		logger.warn("Lists all available filters:");
+		logger.warn("   --operation=listfilters");
+		logger.warn("");
+		logger.warn("---------------------------------------------------------------------------------------------------");
 	}
 }

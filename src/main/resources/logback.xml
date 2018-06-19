@@ -10,7 +10,6 @@
             <maxHistory>10</maxHistory>
             <totalSizeCap>3GB</totalSizeCap>
         </rollingPolicy>
-
         <encoder>
             <pattern>%-4relative [%thread] %-5level %logger{35} - %msg%n</pattern>
         </encoder>
@@ -24,6 +23,11 @@
                 %msg%n
             </Pattern>
         </layout>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>WARN</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
     </appender>
 
     <root level="INFO">
@@ -33,5 +37,7 @@
     <root level="WARN">
         <appender-ref ref="STDOUT"/>
     </root>
+
+
 
 </configuration>
